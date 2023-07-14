@@ -1,0 +1,105 @@
+body {
+    background-color: rgb(32, 32, 32);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+#div-main {
+    padding: 10px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#div-text-output {
+    border: 1px solid white;
+    color: white;
+    padding: 5px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+}
+
+#div-output-filter {
+    display: flex;
+    flex-direction: row;
+}
+
+#input-text-main {
+    background: none;
+    border: 1px solid white;
+    margin-top: 5px;
+    color: white;
+}
+
+:focus {
+    outline: none;
+}
+
+#span-title {
+    font-family: monospace;
+    white-space: pre;
+    line-height: 1;
+    color: white;
+}
+
+.span-color-dark-purple {
+    color: rgb(207, 123, 255);
+}
+
+.span-color-light-purple {
+    color: rgb(221, 163, 255);
+}
+
+.span-color-dark-green {
+    color: rgb(118, 255, 129);
+}
+
+.span-color-light-green {
+    color: rgb(178, 255, 185);
+}
+
+.span-color-dark-blue {
+    color: rgb(131, 131, 255);
+}
+
+.span-color-light-blue {
+    color: rgb(172, 172, 255);
+}
+
+.span-color-white {
+    color: rgb(255, 255, 255);
+}
+
+.layout-row {
+    display: flex;
+    flex-direction: row;
+}
+
+.layout-row-centered {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.layout-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.layout-column-centered {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+span {
+    color: white;
+}
