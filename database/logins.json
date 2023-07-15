@@ -1,1 +1,1 @@
-{"user1":"pass1"}
+{"user100":{"netAddresses":["::1:50545"],"password":"pass100"},"user101":{"netAddresses":["::1:50561"],"password":"pass101"},"user20":{"netAddresses":["::1:50579"],"password":"pass20"},"user21":{"netAddresses":["::1:50586"],"password":"pass21"}}

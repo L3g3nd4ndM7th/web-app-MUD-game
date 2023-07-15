@@ -1,0 +1,1 @@
+Need to create a usersOnline variable and create a user object for every client that joins.
