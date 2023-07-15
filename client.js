@@ -22,16 +22,22 @@ socket.addEventListener('message', (event) => {
 
   // Determine the message color based on the prefix
   let className = '';
-  if (message.startsWith('System2: ')) {
+  if (message.startsWith('color-light-purple: ')) {
     className = 'span-color-light-purple';
-    message = message.substring('System2: '.length);
-  } else if (message.startsWith('System1: ')) {
+    message = message.substring('color-light-purple: '.length);
+  } 
+  
+  else if (message.startsWith('color-dark-purple: ')) {
     className = 'span-color-dark-purple';
-    message = message.substring('System1: '.length);
-  } else if (message.startsWith('System3: ')) {
+    message = message.substring('color-dark-purple: '.length);
+  } 
+  
+  else if (message.startsWith('color-white: ')) {
     className = 'span-color-white';
-    message = message.substring('System3: '.length);
-  } else {
+    message = message.substring('color-white: '.length);
+  } 
+  
+  else {
     className = 'span-color-dark-green';
   }
 

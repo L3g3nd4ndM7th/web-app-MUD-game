@@ -3,320 +3,195 @@ const fs = require('fs');
 const path = require('path');
 
 const logsFolder = path.join(__dirname, 'server logs');
-fs.existsSync(logsFolder) || fs.mkdirSync(logsFolder);
+const databaseFolder = path.join(__dirname, 'database');
 
+const loginsFilePath = path.join(databaseFolder, 'logins.json');
 const messagesFilePath = path.join(logsFolder, 'messages.txt');
 const connectionsFilePath = path.join(logsFolder, 'connections.txt');
 const disconnectionsFilePath = path.join(logsFolder, 'disconnections.txt');
 const errorsFilePath = path.join(logsFolder, 'errors.txt');
 
 const wss = new WebSocket.Server({ port: 8080 });
+const speciesOptions = ['human', 'elf', 'dwarf', 'halfling', 'halfgiant'];
+const archetypeOptions = ['fighter', 'rogue', 'mage'];
+const alignmentOptions = ['lawful', 'neutral', 'chaotic'];
+const stats = ['strength', 'constitution', 'dexterity', 'intelligence', 'wisdom', 'charisma'];
 
+const inputModes = ['justConnected', 'loginUsername', 'loginPassword', 'loginPasswordConfirm', 'registerUsername', 'registerUsernameConfirm',
+    'registerPassword', 'registerPasswordConfirm', 'chCrSpecies', 'chCrArchetype', 'chCrAlignment', 'chCrAbilityScores',
+    'chCrMoney', 'chCrName', 'mainGame'];
+
+const commands = {
+    'a': 'attack',
+    'l': 'login',
+    'r': 'register',
+    'lk': 'look',
+    'mv': 'move',
+    'i': 'item',
+    'u': 'use',
+    'ex': 'examine',
+    'eq': 'equip',
+    'uneq': 'unequip',
+    'ch': 'character'
+};
+
+// let clients = [];
+// let clientAddress = // netaddress and netport
+// let currentTimeStamp = //new Date();
+// let usernameAttempts = 0;
+// let passwordAttempts = 0;
+let tempLoginUsername = ''
+let tempLoginPassword = ''
+let tempRegisterUsername = ''
+let tempRegisterPassword = ''
+
+let character = {
+    name: '',
+    species: '', // human, elf, dwarf, halfling, halfgiant, beastkin, draconic, mutant
+    archetype: '', // fighter, rogue, mage
+    alignment: '', // lawful, neutral, chaotic
+    strength: 0,
+    constitution: 0,
+    dexterity: 0,
+    intelligence: 0,
+    wisdom: 0,
+    charisma: 0,
+    money: 0,
+    level: 1,
+    experience: 0
+};
+
+let user = {
+    netaddress: '',
+    netport: '',
+    username: '',
+    inputMode: 'justConnected',
+    characterName: '',
+    abilityScoresRerolls: 3,
+    timeAbilityScoresReroll: 0 // sets to 24 hours to restore 1 ability score reroll after they use their 3 ability score rerolls
+};
+
+let logins = []; // Initialize the logins array
+
+// Load user logins from logins.json
+try {
+    const loginsData = fs.readFileSync(loginsFilePath, 'utf8');
+    logins = JSON.parse(loginsData);
+
+    // Convert the logins data to an array of objects
+    logins = Object.entries(logins).map(([username, password]) => ({ username, password }));
+} catch (error) {
+    console.error('Error loading logins:', error);
+}
+
+// Main server listener
 wss.on('connection', (ws) => {
-  const clientAddress = `${ws._socket.remoteAddress}:${ws._socket.remotePort}`;
-  const getCurrentTimestamp = () => new Date().toISOString();
+    console.log('A new client connected.');
 
-  const logMessage = (filePath, message) => {
-    fs.appendFile(filePath, `[${getCurrentTimestamp()}] ${message}\n`, (err) => {
-      if (err) {
-        console.error(err);
-      }
-    });
-  };
+    ws.on('message', (message) => {
+        message = message.toString().trim()
+        console.log(`Received message: ${message}`);
 
-  logMessage(connectionsFilePath, `Client connected: ${clientAddress}`);
-  console.log(`Client connected: ${clientAddress}`);
-
-  const handleMessage = (message) => {
-    const receivedMessage = message.toString('utf8');
-
-    if (receivedMessage === 'l') {
-      handleLogin();
-    } else if (receivedMessage === 'r') {
-      handleRegistration();
-    }
-  };
-
-  ws.on('message', handleMessage);
-
-  const handleLogin = () => {
-    ws.send('System3: Please enter your username');
-
-    let attempts = 0;
-
-    const handleUsername = (username) => {
-      fs.readFile('database/logins.json', 'utf8', (err, data) => {
-        if (err) {
-          console.error(err);
-          return;
+        if (message === 'l' && user.inputMode === 'justConnected') {
+            user.inputMode = 'loginUsername';
+            ws.send('color-white: Please enter your username.');
         }
 
-        const logins = JSON.parse(data);
+        else if (message === 'r' && user.inputMode === 'justConnected') {
+            user.inputMode = 'registerUsername';
+            ws.send('color-white: Please register your username.');
+        }
 
-        if (logins.hasOwnProperty(username)) {
-          ws.removeListener('message', handleUsername);
-          ws.send('System3: Please enter your password');
+        else if (user.inputMode === 'loginUsername') {
+            if (checkUserExists(message)) {
+                tempLoginUsername = message;
+                user.inputMode = 'loginPassword';
+                ws.send('color-white: Please enter your password.');
+            } else {
+                ws.send('color-white: User not found.');
+            }
+        }
 
-          let passwordAttempts = 0;
+        else if (user.inputMode === 'loginPassword') {
+            tempLoginPassword = message;
+            if (checkCredentials(tempLoginUsername, tempLoginPassword)) {
+                user.username = tempLoginUsername;
+                tempLoginUsername = '';
+                tempLoginPassword = '';
+                ws.send('color-white: Login successful.')
 
-          const handlePassword = (password) => {
-            if (logins[username] === password.toString()) {
-              ws.removeListener('message', handlePassword);
-              ws.send('System1: Welcome to the game world!');
-              console.log(`Client logged in: ${clientAddress}`);
-
-              // Check if character exists
-              fs.readFile('database/characters.json', 'utf8', (err, charData) => {
-                if (err) {
-                  console.error(err);
-                  return;
-                }
-
-                const characters = JSON.parse(charData);
-
-                if (!characters.hasOwnProperty(username)) {
-                  // Character does not exist, initiate character creation process
-                  ws.send('System2: Character creation process...');
-                  createCharacter(username);
+                if (!user.character) {
+                    user.inputMode = 'chCrSpecies';
+                    ws.send(`color-white: It's your first time loggin in. Please create a character.`);
+                    ws.send('color-white: Begin by choosing your character species.');
                 } else {
-                  // Character exists, proceed with gameplay
-                  // Attach the game command listener...
+                    user.inputMode = 'mainGame';
+                    ws.send('color-white: Welcome to the game world!');
                 }
-              });
-            } else {
-              passwordAttempts++;
-              if (passwordAttempts < 3) {
-                ws.send(`System3: Incorrect password. ${3 - passwordAttempts} attempts remaining.`);
-              } else {
-                ws.removeListener('message', handlePassword);
-                ws.send('System3: Exceeded maximum password attempts. Please try again later.');
-              }
             }
-          };
-
-          ws.on('message', handlePassword);
-        } else {
-          attempts++;
-          if (attempts < 3) {
-            ws.send(`System3: Username not found. Please register or try again. ${3 - attempts} attempts remaining.`);
-          } else {
-            ws.removeListener('message', handleUsername);
-            ws.send('System3: Exceeded maximum username attempts. Please try again later.');
-          }
-        }
-      });
-    };
-
-    ws.on('message', handleUsername);
-  };
-
-  const handleRegistration = () => {
-    ws.send('System3: Please enter your desired username');
-
-    let attempts = 0;
-
-    const handleUsername = (username) => {
-      fs.readFile('database/logins.json', 'utf8', (err, data) => {
-        if (err) {
-          console.error(err);
-          return;
         }
 
-        const logins = JSON.parse(data);
+        else if (user.inputMode === 'registerUsername') {
+            tempRegisterUsername = message;
+            user.inputMode = 'registerPassword';
+            ws.send('color-white: Please register your password.');
+        }
 
-        if (logins.hasOwnProperty(username)) {
-          ws.send(`System3: Username '${username}' already exists. Please choose a different username.`);
-        } else {
-          ws.removeListener('message', handleUsername);
-          ws.send(`System3: '${username}' is your desired username? (yes/no)`);
+        else if (user.inputMode === 'registerPassword') {
+            tempRegisterPassword = message;
+            user.inputMode = 'registerPasswordConfirm';
+            ws.send('color-white: Please confirm your password.');
+        }
 
-          const handleConfirmation = (confirmation) => {
-            const confirmed = confirmation.toString().toLowerCase();
-
-            if (confirmed === 'yes' || confirmed === 'y') {
-              ws.removeListener('message', handleConfirmation);
-              ws.send('System3: Please enter your desired password');
-
-              let passwordAttempts = 0;
-
-              const handlePassword = (password) => {
-                ws.removeListener('message', handlePassword);
-                ws.send('System3: Please confirm your password');
-
-                const handleConfirmation = (passwordConfirmation) => {
-                  ws.removeListener('message', handleConfirmation);
-                  const confirmedPassword = passwordConfirmation.toString();
-
-                  if (password.toString() === confirmedPassword) {
-                    logins[username] = confirmedPassword;
-                    const updatedLogins = JSON.stringify(logins);
-
-                    fs.writeFile('database/logins.json', updatedLogins, (err) => {
-                      if (err) {
-                        console.error(err);
-                      } else {
-                        ws.send('System3: Registration complete. You may now login.');
-                      }
-                    });
-                  } else {
-                    ws.send("System3: Passwords don't match. Please try again.");
-                  }
-                };
-
-                ws.on('message', handleConfirmation);
-              };
-
-              ws.on('message', handlePassword);
-            } else if (confirmed === 'no' || confirmed === 'n') {
-              ws.send('System3: Registration canceled. You may try again later.');
-              ws.removeListener('message', handleConfirmation);
+        else if (user.inputMode === 'registerPasswordConfirm') {
+            if (message === tempRegisterPassword) {
+                createUser(tempRegisterUsername, tempRegisterPassword);
+                tempRegisterUsername = '';
+                tempRegisterPassword = '';
+                ws.send('color-white: Registration successful. Proceed to login.');
             } else {
-              ws.send("System3: Invalid confirmation. Please enter 'yes' or 'no'.");
+                ws.send('color-white: Passwords do not match. Try again.');
+                user.inputMode = 'registerPassword';
+                ws.send('color-white: Please register your password.');
             }
-          };
-
-          ws.on('message', handleConfirmation);
         }
-      });
-    };
+    });
 
-    ws.on('message', handleUsername);
-  };
+    ws.on('close', () => {
+        console.log('A client disconnected.');
+    });
 
-  const createCharacter = (username) => {
-    const speciesOptions = ['human', 'elf', 'dwarf', 'halfling', 'halfgiant'];
-    const archetypeOptions = ['fighter', 'rogue', 'mage'];
-    const alignmentOptions = ['lawful', 'neutral', 'chaotic'];
-    const stats = ['strength', 'constitution', 'dexterity', 'intelligence', 'wisdom', 'charisma'];
-
-    const getRandomNumber = () => {
-      return Math.floor(Math.random() * 6) + 1;
-    };
-
-    const character = {
-      species: '',
-      archetype: '',
-      alignment: '',
-      stats: {},
-      money: getRandomNumber() + getRandomNumber() + getRandomNumber(),
-      name: '',
-    };
-
-    const askSpecies = () => {
-      ws.send('System3: Please choose a species:\n');
-      speciesOptions.forEach((species, index) => {
-        ws.send(`System3: ${index + 1}. ${species}`);
-      });
-      ws.on('message', (choice) => {
-        const index = parseInt(choice.toString().trim(), 10);
-        if (index >= 1 && index <= speciesOptions.length) {
-          character.species = speciesOptions[index - 1];
-          ws.send(`System3: You chose ${character.species}.\n`);
-          askArchetype();
-        } else {
-          ws.send('System3: Invalid choice. Please choose a valid species.');
-        }
-      });
-    };
-
-    const askArchetype = () => {
-      ws.send('System3: Please choose an archetype:\n');
-      archetypeOptions.forEach((archetype, index) => {
-        ws.send(`System3: ${index + 1}. ${archetype}`);
-      });
-      ws.on('message', (choice) => {
-        const index = parseInt(choice.toString().trim(), 10);
-        if (index >= 1 && index <= archetypeOptions.length) {
-          character.archetype = archetypeOptions[index - 1];
-          ws.send(`System3: You chose ${character.archetype}.\n`);
-          askAlignment();
-        } else {
-          ws.send('System3: Invalid choice. Please choose a valid archetype.');
-        }
-      });
-    };
-
-    const askAlignment = () => {
-      ws.send('System3: Please choose an alignment:\n');
-      alignmentOptions.forEach((alignment, index) => {
-        ws.send(`System3: ${index + 1}. ${alignment}`);
-      });
-      ws.on('message', (choice) => {
-        const index = parseInt(choice.toString().trim(), 10);
-        if (index >= 1 && index <= alignmentOptions.length) {
-          character.alignment = alignmentOptions[index - 1];
-          ws.send(`System3: You chose ${character.alignment}.\n`);
-          generateStats();
-        } else {
-          ws.send('System3: Invalid choice. Please choose a valid alignment.');
-        }
-      });
-    };
-
-    const generateStats = () => {
-      stats.forEach((stat) => {
-        character.stats[stat] = getRandomNumber() + getRandomNumber() + getRandomNumber();
-      });
-
-      displayStats();
-    };
-
-    const displayStats = () => {
-      ws.send('System3: Here are your character stats:\n');
-      stats.forEach((stat) => {
-        ws.send(`System3: ${stat.charAt(0).toUpperCase() + stat.slice(1)}: ${character.stats[stat]}`);
-      });
-
-      ws.send(`System3: Your character's money: ${character.money}`);
-
-      ws.send('System3: Please enter a name for your character.');
-      ws.on('message', (name) => {
-        character.name = name.toString().trim();
-        ws.send(`System3: Your character name is ${character.name}.`);
-        displayCharacter();
-      });
-    };
-
-    const displayCharacter = () => {
-      ws.send('System3: Here is your character:\n');
-      Object.keys(character).forEach((property) => {
-        if (property !== 'stats') {
-          ws.send(`System3: ${property.charAt(0).toUpperCase() + property.slice(1)}: ${character[property]}`);
-        }
-      });
-
-      // Save character data to the characters database
-      fs.readFile('database/characters.json', 'utf8', (err, charData) => {
-        if (err) {
-          console.error(err);
-          return;
-        }
-
-        const characters = JSON.parse(charData);
-        characters[username] = character;
-        const updatedCharacters = JSON.stringify(characters);
-
-        fs.writeFile('database/characters.json', updatedCharacters, (err) => {
-          if (err) {
-            console.error(err);
-          } else {
-            ws.send('System3: Character creation complete. Let the game begin!');
-          }
-        });
-      });
-    };
-
-    askSpecies();
-  };
-
-  ws.on('close', () => {
-    logMessage(disconnectionsFilePath, `Client disconnected: ${clientAddress}`);
-    console.log(`Client disconnected: ${clientAddress}`);
-  });
-
-  ws.on('error', (error) => {
-    logMessage(errorsFilePath, `WebSocket error for ${clientAddress}: ${error}`);
-  });
+    ws.on('error', (error) => {
+        console.error('WebSocket error:', error);
+    });
 });
 
-console.log("Server is online.");
+console.log('Server is online.');
+
+// Function definitions
+
+// Function to check if the username exists in logins
+function checkUserExists(username) {
+    for (const login of logins) {
+        if (login.username === username) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function checkCredentials(username, password) {
+    const user = logins.find((login) => login.username === username);
+    return user && user.password === password;
+}
+
+function createUser(username, password) {
+    const newUser = { username, password };
+    logins.push(newUser);
+    saveLoginsToFile();
+}
+
+function saveLoginsToFile() {
+    const loginsData = JSON.stringify(logins);
+    fs.writeFileSync(loginsFilePath, loginsData, 'utf8');
+}
