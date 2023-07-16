@@ -5,36 +5,52 @@ socket.addEventListener('message', (event) => {
   const spanElement = document.createElement('span')
   const divTextOutput = document.getElementById('div-text-output')
 
-  if (message.includes(':white:')) {
-    spanElement.classList.add('span-color-white');
-    message = message.replaceAll(':white:', '');
-  }
-
   if (message.includes(':lightpurple:')) {
     spanElement.classList.add('span-color-light-purple');
-    message = message.replaceAll(':lightpurple:', '');
+    message = message.replace(':lightpurple:', '');
   }
 
   if (message.includes(':darkpurple:')) {
     spanElement.classList.add('span-color-dark-purple');
-    message = message.replaceAll(':darkpurple:', '');
+    message = message.replace(':darkpurple:', '');
   }
 
   if (message.includes(':lightgreen:')) {
     spanElement.classList.add('span-color-light-green');
-    message = message.replaceAll(':lightgreen:', '');
+    message = message.replace(':lightgreen:', '');
   }
 
   if (message.includes(':darkgreen:')) {
     spanElement.classList.add('span-color-dark-green');
-    message = message.replaceAll(':darkgreen:', '');
+    message = message.replace(':darkgreen:', '');
   }
   
   spanElement.innerHTML = message
   divTextOutput.appendChild(spanElement)
-
   divTextOutput.scrollTop = divTextOutput.scrollHeight
 })
+
+socket.addEventListener('error', (event) => {
+  const message = `Client error.`;
+  console.error(event)
+  const spanElement = document.createElement('span');
+  const divTextOutput = document.getElementById('div-text-output');
+  spanElement.classList.add('span-color-light-purple');
+  spanElement.innerHTML = message;
+  divTextOutput.appendChild(spanElement);
+  divTextOutput.scrollTop = divTextOutput.scrollHeight;
+});
+
+socket.addEventListener('close', (event) => {
+  const message = `Disconnected from the server.`;
+  console.log(`Code: ${event.code} Reason: ${event.reason}`)
+  const spanElement = document.createElement('span');
+  const divTextOutput = document.getElementById('div-text-output');
+  spanElement.classList.add('span-color-light-purple');
+  spanElement.innerHTML = message;
+  divTextOutput.appendChild(spanElement);
+  divTextOutput.scrollTop = divTextOutput.scrollHeight;
+});
 
 function handleKeyPress(event) {
   let inputTextMain = document.getElementById('input-text-main');
