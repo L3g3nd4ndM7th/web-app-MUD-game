@@ -1,88 +1,47 @@
-const socket = new WebSocket('ws://localhost:8080');
+const socket = new WebSocket('ws://localhost:8080')
 
-// Connection opened event
-socket.addEventListener('open', () => {
-  let connectionMessage = 'Connected to WebSocket server.';
-  let spanElement = createSpanElement(connectionMessage, 'span-color-dark-purple');
-  insertIntoTextOutput(spanElement);
-  connectionMessage = 'Type c for a list of commands.';
-  spanElement = createSpanElement(connectionMessage, 'span-color-white');
-  insertIntoTextOutput(spanElement);
-});
-
-socket.addEventListener('error', (error) => {
-  let connectionError = 'Failed to connect to WebSocket server';
-  let spanElement = createSpanElement(connectionError, 'span-color-dark-purple');
-  insertIntoTextOutput(spanElement);
-});
-
-// Message received event
 socket.addEventListener('message', (event) => {
-  let message = event.data;
+  let message = event.data
+  const spanElement = document.createElement('span')
+  const divTextOutput = document.getElementById('div-text-output')
 
-  // Determine the message color based on the prefix
-  let className = '';
-  if (message.startsWith('color-light-purple: ')) {
-    className = 'span-color-light-purple';
-    message = message.substring('color-light-purple: '.length);
-  } 
-  
-  else if (message.startsWith('color-dark-purple: ')) {
-    className = 'span-color-dark-purple';
-    message = message.substring('color-dark-purple: '.length);
-  } 
-  
-  else if (message.startsWith('color-white: ')) {
-    className = 'span-color-white';
-    message = message.substring('color-white: '.length);
-  } 
-  
-  else {
-    className = 'span-color-dark-green';
+  if (message.includes(':white:')) {
+    spanElement.classList.add('span-color-white');
+    message = message.replaceAll(':white:', '');
   }
 
-  // Create a new element to hold the message content
-  let spanElement = createSpanElement(message, className);
-  insertIntoTextOutput(spanElement);
-
-  // Check if the message ends with a newline character (\n)
-  if (message.endsWith('\n')) {
-    // Create a <br> element
-    let brElement = document.createElement('br');
-    insertIntoTextOutput(brElement);
+  if (message.includes(':lightpurple:')) {
+    spanElement.classList.add('span-color-light-purple');
+    message = message.replaceAll(':lightpurple:', '');
   }
-});
 
-// Connection closed event
-socket.addEventListener('close', () => {
-  let disconnectionMessage = 'Disconnected from WebSocket server';
-  let spanElement = createSpanElement(disconnectionMessage, 'span-color-dark-purple');
-  insertIntoTextOutput(spanElement);
-});
+  if (message.includes(':darkpurple:')) {
+    spanElement.classList.add('span-color-dark-purple');
+    message = message.replaceAll(':darkpurple:', '');
+  }
 
-function createSpanElement(message, className) {
-  let spanElement = document.createElement('span');
-  spanElement.textContent = message;
-  spanElement.classList.add(className);
-  return spanElement;
-}
+  if (message.includes(':lightgreen:')) {
+    spanElement.classList.add('span-color-light-green');
+    message = message.replaceAll(':lightgreen:', '');
+  }
 
-function insertIntoTextOutput(element) {
-  let textOutputDiv = document.getElementById('div-text-output');
-  textOutputDiv.appendChild(element);
-  textOutputDiv.scrollTop = textOutputDiv.scrollHeight;
-}
+  if (message.includes(':darkgreen:')) {
+    spanElement.classList.add('span-color-dark-green');
+    message = message.replaceAll(':darkgreen:', '');
+  }
+  
+  spanElement.innerHTML = message
+  divTextOutput.appendChild(spanElement)
+
+  divTextOutput.scrollTop = divTextOutput.scrollHeight
+})
 
 function handleKeyPress(event) {
   let inputTextMain = document.getElementById('input-text-main');
   let message = inputTextMain.value.trim();
 
   if (event.keyCode === 13 || event.key === 'Enter') {
-    // Enter key was pressed
-    // Send the message to the server
     socket.send(message);
-
-    // Clear the input field
     inputTextMain.value = '';
   }
 }
