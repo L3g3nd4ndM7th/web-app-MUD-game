@@ -1,13 +1,7 @@
-class WebSocketClient {
-  constructor() {
-    this.socket = new WebSocket('ws://localhost:8080');
-    document.addEventListener('keydown', this.handleKeyPress.bind(this));
-    this.socket.addEventListener('message', this.handleMessage.bind(this));
-    this.socket.addEventListener('error', this.handleError.bind(this));
-    this.socket.addEventListener('close', this.handleClose.bind(this));
-  }
+function startWebSocketClient() {
+  const socket = new WebSocket('ws://localhost:8080');
 
-  handleMessage(event) {
+  function handleMessage(event) {
     let message = event.data;
     const spanElement = document.createElement('span');
     const divTextOutput = document.getElementById('div-text-output');
@@ -37,7 +31,7 @@ class WebSocketClient {
     divTextOutput.scrollTop = divTextOutput.scrollHeight;
   }
 
-  handleError(event) {
+  function handleError(event) {
     const message = 'Client error.';
     console.error(event);
     const spanElement = document.createElement('span');
@@ -48,7 +42,7 @@ class WebSocketClient {
     divTextOutput.scrollTop = divTextOutput.scrollHeight;
   }
 
-  handleClose(event) {
+  function handleClose(event) {
     const message = 'Disconnected from the server.';
     console.log(`Code: ${event.code} Reason: ${event.reason}`);
     const spanElement = document.createElement('span');
@@ -59,15 +53,20 @@ class WebSocketClient {
     divTextOutput.scrollTop = divTextOutput.scrollHeight;
   }
 
-  handleKeyPress(event) {
-    let inputTextMain = document.getElementById('input-text-main');
+  socket.addEventListener('message', handleMessage);
+  socket.addEventListener('error', handleError);
+  socket.addEventListener('close', handleClose);
+  
+  const inputTextMain = document.getElementById('input-text-main');
+  
+  inputTextMain.addEventListener('keypress', function(event) {
     let message = inputTextMain.value.trim();
-
-    if (event.keyCode === 13 || event.key === 'Enter') {
-      this.socket.send(message);
+  
+    if (event.key === 'Enter') {
+      socket.send(message);
       inputTextMain.value = '';
     }
-  }
+  });
 }
 
-const client = new WebSocketClient();
+startWebSocketClient()
